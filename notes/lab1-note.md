@@ -5,6 +5,25 @@
 ##  实验平台搭建
 &emsp;&emsp;实验需要依赖的代码还是挺多的，官网上也提供了配置好环境的虚拟机，不过不知道为什么我下载不了，所以我就自己配。具体配置的过程不赘述，简单来说就是缺什么补什么，很快就配置好了。
 
+##  实验代码下载
+&emsp;&emsp;我在好大学第16节课程处下载的代码只有lab1的代码，后续lab的代码需要重新下载，而且涉及文件覆盖等问题，非常麻烦，所以这里给出一个新的下载方式。[这里](https://gitee.com/ipads-lab/chcore-lab)是所有lab代码的gitee仓库，所有的代码都可以从这里获取，我们需要做的是将仓库克隆下来，然后换成自己的仓库。
+*   第一，在自己的github里新建一个仓库，假设仓库名是chcore，那么这个仓库的的git地址则是`git@github.com:username/chcore.git`。
+*   第二，clone仓库代码。在命令行处输入`git clone https://gitee.com/ipads-lab/chcore-lab.git`。
+*   第三，要注意的是，第二步仅仅只是将仓库里某个分支克隆下来，我们需要按以下步骤将所有分支克隆下来：
+    *   `git branch -r | grep -v '\->' | while read remote; do git branch --track "${remote#origin/}" "$remote"; done`
+    *   `git fetch --all`
+    *   `git pull --all`
+    *   执行完以上步骤后，输入`git branch`就能发现本地已经有了所有的分支代码。
+*   第四，更改远程仓库的地址
+    *   输入`git remote show origin`可以看到，此时远程仓库是交大的仓库地址，不是我们，因此我们需要将其改成我们自己的仓库。
+    *   `git remote set-url origin git@github.com:sworduo/chcore.git`输入后，再次`git remote show origin`可以看到此时这个仓库对应的origin就是我们的仓库了。
+*   第五，完成前四步后，已经将本地仓库和远程（自己的）仓库关联起来，但是此时本地仓库有五个分支，而远程仓库只有一个分支，我们要做的，就是将本地的每个分支都push到远程。对于lab1、lab2、lab3、lab4、lab5每个分支，我们都做如下操作：
+    *   `git checkout labx` (labx中x表示的是实验编号，如lab1等)
+    *   `git push -u origin labx (labx要和当前的分支名相同)
+    *   执行上面两条命令后，将会在远程仓库新建名为labx的新分支，并与本地的分支labx关联起来。
+*   第六，没有第六了，完成上面的操作后，按照[chcore-git.md](https://github.com/sworduo/chcore/tree/lab1/notes/chcore-git.md)开始实验就可以了。
+
+
 ##  练习3
     结合readelf -S build/kernel.img读取符号表与练习2 中的GDB 调试信息，请找出请找出build/kernel.image入口定义在哪个文件中。继续借助单步调试追踪程序的执行过程，思考一个问题：目前本实验中支持的内核是单核版本的内核，然而在Raspi3 上电后，所有处理器会同时启动。结合boot/start.S中的启动代码，并说明挂起其他处理器的控制流。
 
