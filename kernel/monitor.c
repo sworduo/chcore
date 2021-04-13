@@ -30,6 +30,16 @@ int stack_backtrace()
 	printk("Stack backtrace:\n");
 
 	// Your code here.
-
+	//回溯会回溯到fp的值为0的情况，也就是整个程序最开始的函数那里
+	//注意fp是当前函数的栈的栈顶，这是个地址！里面的值才是我们想要的
+	u64* current_fp = (u64*)read_fp();
+	// printk("%lx %lx\n", current_fp, *current_fp);
+	while(*current_fp){
+		u64* lastfp = (u64*)*current_fp;
+		u64* lr = (u64*)*((u64*)(lastfp+1));
+		u64 arg = *(u64*)(current_fp+2);
+		printk("LR %lx FP %lx Args %lx\n", lr, lastfp, arg);
+		current_fp = lastfp;
+	}
 	return 0;
 }

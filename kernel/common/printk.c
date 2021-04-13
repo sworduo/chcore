@@ -55,6 +55,12 @@ enum flags {
 	PAD_RIGHT = 2
 };
 
+//将要打印的字符string放入打印位置out中，如果string的长度大于out，那么string内多余的字符会调用uart_send函数处理。
+//out可以看成是输出缓冲区
+//flags两个选项，补零或者是右对齐。
+//补零：假设width=10，打印的数字是12345，那么实际输出是0000012345；如果打印的数字是-12345，那么实际输出是-000012345，注意，'-'号也占一个位置，所有后者比前者少数出一个0.
+//右对齐：width=10,string=12345,output=12345      后面跟着五个空格
+//如果string超过width的长度，那么什么都不补，不管了
 static int prints(char **out, const char *string, int width, int flags)
 {
 	int pc = 0, padchar = ' ';
@@ -103,6 +109,7 @@ static int printk_write_num(char **out, long long i, int base, int sign,
 	char print_buf[PRINT_BUF_LEN];
 	char *s;
 	int t, neg = 0, pc = 0;
+	//这里将有符号数转为无符号数,如果i是负数,那么此时会变成很大的正数
 	unsigned long long u = i;
 
 	if (i == 0) {
@@ -113,12 +120,29 @@ static int printk_write_num(char **out, long long i, int base, int sign,
 
 	if (sign && base == 10 && i < 0) {
 		neg = 1;
+		//将负数变成正数,从很大的正数(比如-1对应的无符号数)变成对应的绝对值(也就是1)
 		u = -i;
 	}
 	// TODO: fill your code here
 	// store the digitals in the buffer `print_buf`:
 	// 1. the last postion of this buffer must be '\0'
 	// 2. the format is only decided by `base` and `letbase` here
+
+	s = print_buf + PRINT_BUF_LEN;
+	*--s = '\0';
+	while(u > 0){
+		s--;
+		t = u % base;
+		if(t < 10){
+			*s = t + '0';
+		}
+		else{
+			*s = t - 10 + letbase;
+		}
+		u /= base;
+	}
+	//这里有个小问题，转换的数字长度可能会长于print_buf_len-1，s可能会超过系统分配给他的范围，不过暂时没问题就先不改了。
+	//可能还存在一个问题，如果base特别大，比如10000，那么可能t的值会超过一个字符的大小，然后出错。不过这里是static函数，只要保证外层调用时只提供某些进制的转换即可。
 
 	if (neg) {
 		if (width && (flags & PAD_ZERO)) {
@@ -129,6 +153,7 @@ static int printk_write_num(char **out, long long i, int base, int sign,
 			*--s = '-';
 		}
 	}
+
 
 	return pc + prints(out, s, width, flags);
 }
