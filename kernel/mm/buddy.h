@@ -11,9 +11,13 @@
 #define BUDDY_PAGE_SIZE     (0x1000)
 #define BUDDY_MAX_ORDER     (14UL)
 
-/* `struct page` is the metadata of one physical 4k page. */
+/*
+ `struct page` is the metadata of one physical 4k page. 
+通过与start_page地址相减来判断当前page是第几个page
+*/
 struct page {
-	/* Free list */
+	/* Free list 存放当前物理块在free_list中的地址，当确定块地址时，其在链表中的位置也随之确定，因此可以快速访问和删除*/
+	//node不是指针的好处在于，node的地址和其他变量的地址是挨在一起的，所以可以通过node字段的地址定位page结构体的地址。
 	struct list_head node;
 	/* Whether the correspond physical page is free now. */
 	int allocated;
@@ -35,7 +39,7 @@ struct phys_mem_pool {
 	 * this physical memory pool.
 	 */
 	u64 pool_start_addr;
-	u64 pool_mem_size;
+	u64 pool_mem_size; //整个物理内存池的实际可用空间大小（不包括page元数据结构体）
 
 	/*
 	 * This field is only used in ChCore unit test.

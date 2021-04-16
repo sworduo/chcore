@@ -24,6 +24,7 @@ extern unsigned long *img_end;
 #define START_VADDR phys_to_virt(PHYSICAL_MEM_START)	//24M
 #define NPAGES (128*1000)
 
+
 #define PHYSICAL_MEM_END (PHYSICAL_MEM_START+NPAGES*BUDDY_PAGE_SIZE)
 
 /*
@@ -67,6 +68,42 @@ void kernel_space_check(void)
 
 struct phys_mem_pool global_mem;
 
+static void test_alloc(struct phys_mem_pool *zone, long n, long order){
+	long i;
+	struct page *page;
+	for(i = 0; i < n; i++){
+		page = buddy_get_pages(zone, order);
+		if(!page){
+			printk("[INFO] alloc error id:%d total:%d\n", i, n);
+			return;
+		}
+	}
+	kinfo("alloc ok\n");
+	return;
+}
+
+static void show_freelist(struct phys_mem_pool *zone){
+	int i = 0;
+	struct list_head *h, *c;
+	for(; i < BUDDY_MAX_ORDER; i++){
+		printk("order:%d num:%d\n", i, zone->free_lists[i].nr_free);
+	}
+	// h = &zone->free_lists[11].free_list;
+	// c = h->next;
+	// while(c != h){
+	// 	printk("order=11:%x\n", (u64)c);
+	// 	c = c->next;
+	// }
+	// printk("order=12:%x\n", zone->free_lists[12].free_list.next);
+
+	// h = &zone->free_lists[13].free_list;
+	// c = h->next;
+	// while(c != h){
+	// 	printk("order=13:%x %x\n", (u64)c, *(struct list_head*)((char*)c+8));
+	// 	c = c->next;
+	// }
+}
+
 void mm_init(void)
 {
 	vaddr_t free_mem_start = 0;
@@ -91,7 +128,13 @@ void mm_init(void)
 	       page_meta_start, start_vaddr, npages, sizeof(struct page));
 
 	/* buddy alloctor for managing physical memory */
+	kinfo("init_buddy begin\n");
 	init_buddy(&global_mem, page_meta_start, start_vaddr, npages);
+	kinfo("init_buddy finished\n");
+	show_freelist(&global_mem);
+	test_alloc(&global_mem, npages, 0);
+	kinfo("alloc test done\n");
+
 
 	/* slab alloctor for allocating small memory regions */
 	init_slab();

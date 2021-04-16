@@ -55,6 +55,12 @@
 
 #define BIT(x)			(1UL << (x))
 
+//https://blog.csdn.net/trochiluses/article/details/9334871
+//offsetof：计算结构体中某个field的偏移字节数。
+//list_entry=container_of：在知道结构体中某个field的地址的情况下，可以计算出这个结构体的起始地址。
+//ptr：field的地址；type：结构体定义的名字；field：这个field在结构体中的定义名字。
+//比如：page结构体，假设struct page *page1，并且ptr = &page1->order，那么list_entry(ptr, struct page, order)可以返回page1的地址。
+
 #define offsetof(TYPE, MEMBER)  ((u64)&((TYPE *)0)->MEMBER)
 #define container_of(ptr, type, field) \
 	((type *)((void *)(ptr) - (u64)(&(((type *)(0))->field))))
