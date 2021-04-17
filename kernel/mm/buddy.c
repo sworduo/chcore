@@ -61,13 +61,11 @@ void init_buddy(struct phys_mem_pool *pool, struct page *start_page,
 		//具体来说page结构体前16个字节存放的是node->prev和node->next的值，但此时初始化为0。
 	}
 
-	printk("start page addr:%lx\n", start_page);
 	/* Put each physical memory page into the free lists. */
 	for (page_idx = 0; page_idx < page_num; ++page_idx) {
 		page = start_page + page_idx;
 		buddy_free_pages(pool, page);
 	}
-	printk("end page addr:%lx\n", page);
 }
 
 //判断地址是否合法
@@ -116,7 +114,9 @@ static struct page *get_buddy_chunk(struct phys_mem_pool *pool,
 	if ((buddy_chunk_addr < pool->pool_start_addr) ||
 	    (buddy_chunk_addr >= (pool->pool_start_addr +
 				  pool->pool_mem_size))) {
-		printk("Buddy addr exceed! start:%lx end:%lx buddy:%lx page:%lx order:%d\n", pool->pool_start_addr, (pool->pool_start_addr +
+		//由于地址起始的问题，某些块的buddy会超过界限
+		//但这是没所谓的，因为这是物理地址，而内核实际使用的是虚拟地址，虚拟地址保证从0开始即可，具体映射到哪个物理地址无所谓
+		printk("Buddy addr exceed! start page addr:%lx end page addr:%lx buddy addr:%lx page addr:%lx order:%d\n", pool->pool_start_addr, (pool->pool_start_addr +
 				  pool->pool_mem_size), buddy_chunk_addr, chunk_addr, order);
 		return NULL;
 	}
@@ -253,7 +253,9 @@ struct page *buddy_get_pages(struct phys_mem_pool *pool, u64 order)
  * 引发问题的关键：当一个chunk由四个块组成时，会不会出现使用非第一个块来调用函数的情况。比如get_buddy_chunk，如果使用第一个块可以得到正确结果，使用非第一个块就会得到错误结果。
  * 思考：假如一直只从free_list里取空闲块，那么只修改第一个page的metadata就可以了，因为之后一直使用的都是第一个块的地址。
  * 况且从get_buddy_chunk可以看出，假设一个chunk的order是1，即这个chunk由两个物理块组成，那么get_buddy_chunk(第一个块地址)可以得到正确的伙伴块地址（也就是伙伴块第一个子块的地址），
- * 但是get_buudy_chunk(第二个块地址)不能得到正确的的伙伴块地址，此时得到的是伙伴块的第二个子块的地址。
+ * 但是get_buudy_chunk(第二个块地址)不能得到正确的的伙伴块地址，此时得到的是伙伴块的第二个子块的地址。（做lab2一时的假设）
+ * 
+ * 如果后续实验会出现上面的情况，那么分配和切割时修改所有字块的order即可。
  * 
  */
 static struct page *merge_page(struct phys_mem_pool *pool, struct page *page)
@@ -266,9 +268,15 @@ static struct page *merge_page(struct phys_mem_pool *pool, struct page *page)
 	//取buddy操作可能会失败
 	//当buddy越界后就将自己放进free_list里
 	//当page的order到达上限时，应该直接放入链表中
-	if(!buddy || page->order == BUDDY_MAX_ORDER-1 || buddy->allocated){
-		if(!buddy)
-			printk("buddy is none! page addr:%lx\n", page);
+
+	//todo：为什么在buddy没分配时会出现buddy->order!=page->order的情况？
+	//原因：假设某个块的地址是0000
+	//那么这个块是 0001 order=0的buddy，也是0010 order=1的buddy，也是0100 order=2的buddy
+	//此时，如果0000只是order为0的未分配的块，而此时0100寻找buddy会发现其buddy（也就是0000）是未分配的！
+	//但这时候一个order为0，一个order为2，显然不匹配。此时会导致内存泄漏。
+	if(!buddy || page->order == BUDDY_MAX_ORDER-1 || buddy->allocated || buddy->order != page->order){
+		// if(!buddy)
+		// 	printk("buddy is none! page addr:%lx\n", page);
 		list_add(&(page->node), &(pool->free_lists[page->order].free_list));
 		pool->free_lists[page->order].nr_free++;
 		merged_page = page;
